@@ -1,0 +1,28 @@
+---
+- name: Labyrinth bootstrap | wait for Forgejo HTTPS
+  ansible.builtin.wait_for:
+    host: "10.{{ labyrinth_range_octet }}.99.2"
+    port: 443
+    timeout: 900
+    delay: 10
+
+- name: Labyrinth bootstrap | wait for Jenkins
+  ansible.builtin.wait_for:
+    host: "10.{{ labyrinth_range_octet }}.99.3"
+    port: 8080
+    timeout: 900
+    delay: 10
+
+- name: Labyrinth bootstrap | wait for LitterBox
+  ansible.builtin.wait_for:
+    host: "10.{{ labyrinth_range_octet }}.99.12"
+    port: 1337
+    timeout: 900
+    delay: 10
+
+- name: Labyrinth bootstrap | wait for Mythic UI
+  ansible.builtin.wait_for:
+    host: "10.{{ labyrinth_range_octet }}.99.6"
+    port: 7443
+    timeout: 900
+    delay: 10

@@ -1,0 +1,52 @@
+---
+- name: Labyrinth bootstrap | use provided Mythic API token
+  ansible.builtin.set_fact:
+    labyrinth_effective_mythic_token: "{{ labyrinth_mythic_api_token }}"
+  when: labyrinth_mythic_api_token | length > 0
+  no_log: true
+
+- name: Labyrinth bootstrap | read Mythic admin password
+  ansible.builtin.command:
+    argv:
+      - ./mythic-cli
+      - config
+      - get
+      - MYTHIC_ADMIN_PASSWORD
+    chdir: "{{ labyrinth_mythic_install_dir }}"
+  register: labyrinth_mythic_admin_password_cmd
+  changed_when: false
+  become: true
+  when: labyrinth_mythic_api_token | length == 0
+  no_log: true
+
+- name: Labyrinth bootstrap | create Mythic API token via GraphQL
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ labyrinth_state_dir }}/create_mythic_apitoken.py"
+  environment:
+    MYTHIC_GRAPHQL_URL: "{{ labyrinth_mythic_graphql_url }}"
+    MYTHIC_ADMIN_USER: "{{ labyrinth_mythic_admin_user }}"
+    MYTHIC_ADMIN_PASSWORD: "{{ labyrinth_mythic_admin_password_cmd.stdout | trim }}"
+    MYTHIC_TOKEN_NAME: labyrinth-bootstrap
+  register: labyrinth_mythic_token_cmd
+  changed_when: true
+  when: labyrinth_mythic_api_token | length == 0
+  no_log: true
+
+- name: Labyrinth bootstrap | store Mythic API token fact
+  ansible.builtin.set_fact:
+    labyrinth_effective_mythic_token: >-
+      {{
+        labyrinth_mythic_api_token
+        if (labyrinth_mythic_api_token | length > 0)
+        else (labyrinth_mythic_token_cmd.stdout | trim)
+      }}
+  no_log: true
+
+- name: Labyrinth bootstrap | require Mythic API token
+  ansible.builtin.assert:
+    that:
+      - labyrinth_effective_mythic_token | default('') | length > 0
+    fail_msg: >-
+      Could not obtain a Mythic API token. Set labyrinth_mythic_api_token in role_vars.

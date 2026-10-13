@@ -1,0 +1,11 @@
+manifest_version: 1
+id: labyrinth
+name: "Labyrinth (MAAS)"
+description: "Whispergate Malware-as-a-Service Ludus range with automated post-deploy pipeline bootstrap."
+version: 1.0.0
+config: range-config.yml
+tags:
+  - maas
+  - red-team
+  - mythic
+  - labyrinth

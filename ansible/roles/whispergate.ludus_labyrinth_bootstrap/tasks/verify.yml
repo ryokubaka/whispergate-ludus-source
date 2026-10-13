@@ -1,0 +1,45 @@
+---
+- name: Labyrinth bootstrap | list Forgejo offensive-tooling repos
+  ansible.builtin.uri:
+    url: "https://10.{{ labyrinth_range_octet }}.99.2/api/v1/orgs/offensive-tooling/repos?limit=50"
+    method: GET
+    user: "{{ labyrinth_forgejo_user }}"
+    password: "{{ labyrinth_forgejo_pass }}"
+    force_basic_auth: true
+    validate_certs: false
+    return_content: true
+  register: labyrinth_forgejo_repos
+
+- name: Labyrinth bootstrap | assert loader repos exist
+  ansible.builtin.assert:
+    that:
+      - item in (labyrinth_forgejo_repos.json | map(attribute='name') | list)
+    fail_msg: "Missing Forgejo repo {{ item }} under offensive-tooling."
+  loop: "{{ labyrinth_expected_loader_repos }}"
+
+- name: Labyrinth bootstrap | Jenkins jobs and agents
+  ansible.builtin.uri:
+    url: "http://10.{{ labyrinth_range_octet }}.99.3:8080/api/json?tree=jobs[name],computer[displayName,offline]"
+    method: GET
+    user: "{{ labyrinth_jenkins_user }}"
+    password: "{{ labyrinth_jenkins_pass }}"
+    force_basic_auth: true
+    return_content: true
+  register: labyrinth_jenkins_status
+
+- name: Labyrinth bootstrap | assert Jenkins loader jobs
+  ansible.builtin.assert:
+    that:
+      - item in (labyrinth_jenkins_status.json.jobs | map(attribute='name') | list)
+    fail_msg: "Missing Jenkins job {{ item }}."
+  loop: "{{ labyrinth_expected_loader_repos }}"
+
+- name: Labyrinth bootstrap | summarize Jenkins agents
+  ansible.builtin.debug:
+    msg: >-
+      Jenkins agents:
+      {{
+        labyrinth_jenkins_status.json.computer
+        | map(attribute='displayName')
+        | list
+      }}

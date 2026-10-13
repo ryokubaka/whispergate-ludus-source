@@ -1,0 +1,90 @@
+---
+- name: Labyrinth bootstrap | clone Labyrinth pipeline
+  ansible.builtin.git:
+    repo: "{{ labyrinth_pipeline_repo }}"
+    dest: "{{ labyrinth_work_dir }}/labyrinth-src"
+    version: "{{ labyrinth_pipeline_ref }}"
+    depth: 1
+    single_branch: true
+  become: true
+
+- name: Labyrinth bootstrap | expose pipeline directory
+  ansible.builtin.file:
+    src: "{{ labyrinth_work_dir }}/labyrinth-src/pipeline"
+    dest: "{{ labyrinth_pipeline_dir }}"
+    state: link
+    force: true
+  become: true
+
+- name: Labyrinth bootstrap | optionally skip tool mirror in setup.sh
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ labyrinth_state_dir }}/skip_tool_mirror.py"
+      - "{{ labyrinth_pipeline_dir }}/setup.sh"
+  when: not labyrinth_mirror_tooling | bool
+  changed_when: true
+
+- name: Labyrinth bootstrap | run pipeline setup.sh
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['bash', labyrinth_pipeline_dir + '/setup.sh', '--non-interactive']
+        + (['--clean'] if labyrinth_setup_clean | bool else [])
+      }}
+  environment:
+    RANGE_OCTET: "{{ labyrinth_range_octet }}"
+    FORGEJO_URL: "https://10.{{ labyrinth_range_octet }}.99.2"
+    JENKINS_URL: "http://10.{{ labyrinth_range_octet }}.99.3:8080"
+    MYTHIC_URL: "https://10.{{ labyrinth_range_octet }}.99.6:7443"
+    LITTERBOX_URL: "http://10.{{ labyrinth_range_octet }}.99.12:1337"
+    FORGEJO_USER: "{{ labyrinth_forgejo_user }}"
+    FORGEJO_PASS: "{{ labyrinth_forgejo_pass }}"
+    JENKINS_USER: "{{ labyrinth_jenkins_user }}"
+    JENKINS_PASS: "{{ labyrinth_jenkins_pass }}"
+    MYTHIC_API_TOKEN: "{{ labyrinth_effective_mythic_token }}"
+    JENKINS_WEBHOOK_TOKEN: "{{ labyrinth_jenkins_webhook_token }}"
+  register: labyrinth_setup_cmd
+  changed_when: true
+  async: 7200
+  poll: 30
+
+- name: Labyrinth bootstrap | capture Forgejo token from setup output
+  ansible.builtin.set_fact:
+    labyrinth_forgejo_api_token: >-
+      {{
+        (
+          labyrinth_setup_cmd.stdout_lines
+          | select('search', 'Daedalus tok:')
+          | first
+          | default('')
+          | regex_replace('^.*Daedalus tok:\\s*', '')
+        )
+      }}
+  no_log: true
+
+- name: Labyrinth bootstrap | create Forgejo API token when setup did not print one
+  ansible.builtin.uri:
+    url: "https://10.{{ labyrinth_range_octet }}.99.2/api/v1/users/{{ labyrinth_forgejo_user }}/tokens"
+    method: POST
+    user: "{{ labyrinth_forgejo_user }}"
+    password: "{{ labyrinth_forgejo_pass }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: daedalus
+      scopes: [all]
+    validate_certs: false
+    status_code: [201, 409]
+    return_content: true
+  register: labyrinth_forgejo_token_resp
+  when: labyrinth_forgejo_api_token | default('') | length == 0
+  no_log: true
+
+- name: Labyrinth bootstrap | store Forgejo token from API
+  ansible.builtin.set_fact:
+    labyrinth_forgejo_api_token: "{{ labyrinth_forgejo_token_resp.json.sha1 }}"
+  when:
+    - labyrinth_forgejo_api_token | default('') | length == 0
+    - labyrinth_forgejo_token_resp.json.sha1 is defined
+  no_log: true

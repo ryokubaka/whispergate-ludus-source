@@ -1,0 +1,43 @@
+---
+- name: Labyrinth bootstrap | find Daedalus eventing workflow files
+  ansible.builtin.find:
+    paths:
+      - "{{ labyrinth_mythic_install_dir }}/InstalledServices/daedalus/eventing"
+      - "{{ labyrinth_mythic_install_dir }}/Payload_Type/daedalus/daedalus/workflows"
+    patterns:
+      - "*.json"
+      - "*.yaml"
+      - "*.yml"
+    file_type: file
+  register: labyrinth_daedalus_workflows
+  failed_when: false
+
+- name: Labyrinth bootstrap | find Sphinx eventing workflow files
+  ansible.builtin.find:
+    paths:
+      - "{{ labyrinth_mythic_install_dir }}/InstalledServices/sphinx/eventing"
+      - "{{ labyrinth_mythic_install_dir }}/Payload_Type/sphinx/sphinx/workflows"
+    patterns:
+      - "*.json"
+      - "*.yaml"
+      - "*.yml"
+    file_type: file
+  register: labyrinth_sphinx_workflows
+  failed_when: false
+
+- name: Labyrinth bootstrap | stage eventing files for operator reference
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ labyrinth_state_dir }}/eventing/{{ item.path | basename }}"
+    remote_src: true
+    mode: "0644"
+  loop: "{{ (labyrinth_daedalus_workflows.files | default([])) + (labyrinth_sphinx_workflows.files | default([])) }}"
+  when: item.path is defined
+
+- name: Labyrinth bootstrap | eventing import note
+  ansible.builtin.debug:
+    msg: >-
+      Mythic eventing workflow import may require the UI when GraphQL
+      eventingImportContainerWorkflow is unavailable. Staged copies are under
+      {{ labyrinth_state_dir }}/eventing/ — import via Mythic Eventing if
+      workflows are not already registered after container install.

@@ -1,0 +1,48 @@
+---
+- name: Labyrinth bootstrap | validate range octet
+  ansible.builtin.assert:
+    that:
+      - labyrinth_range_octet | string | length > 0
+    fail_msg: >-
+      labyrinth_range_octet must be set (Ludus range_second_octet or role_vars).
+
+- name: Labyrinth bootstrap | check prior completion
+  ansible.builtin.stat:
+    path: "{{ labyrinth_state_dir }}/bootstrap-complete"
+  register: labyrinth_bootstrap_state
+
+- name: Labyrinth bootstrap | skip when already complete
+  ansible.builtin.meta: end_host
+  when:
+    - labyrinth_bootstrap_state.stat.exists
+    - not labyrinth_force_bootstrap | bool
+
+- name: Labyrinth bootstrap | prerequisites
+  ansible.builtin.import_tasks: prerequisites.yml
+
+- name: Labyrinth bootstrap | wait for range services
+  ansible.builtin.import_tasks: wait_services.yml
+
+- name: Labyrinth bootstrap | Mythic API token (step 4)
+  ansible.builtin.import_tasks: mythic_token.yml
+
+- name: Labyrinth bootstrap | Jenkins API token
+  ansible.builtin.import_tasks: jenkins_token.yml
+
+- name: Labyrinth bootstrap | pipeline setup.sh (step 5)
+  ansible.builtin.import_tasks: pipeline_setup.yml
+
+- name: Labyrinth bootstrap | eventing workflows (step 6)
+  ansible.builtin.import_tasks: eventing.yml
+
+- name: Labyrinth bootstrap | Daedalus provider env (step 7)
+  ansible.builtin.import_tasks: daedalus_env.yml
+
+- name: Labyrinth bootstrap | verify (step 8)
+  ansible.builtin.import_tasks: verify.yml
+
+- name: Labyrinth bootstrap | record completion
+  ansible.builtin.file:
+    path: "{{ labyrinth_state_dir }}/bootstrap-complete"
+    state: touch
+    mode: "0644"

@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: ludus_labyrinth_bootstrap
+  namespace: whispergate
+  author: whispergate-ludus-source
+  description: Automates Labyrinth MAAS post-deploy steps 4-8 (Mythic token, pipeline setup, Daedalus env, verify).
+  license: BSD-2-Clause
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+  galaxy_tags:
+    - ludus
+    - mythic
+    - labyrinth
+    - maas
+
+dependencies: []

@@ -1,0 +1,46 @@
+---
+- name: Labyrinth bootstrap | Jenkins crumb
+  ansible.builtin.uri:
+    url: "http://10.{{ labyrinth_range_octet }}.99.3:8080/crumbIssuer/api/json"
+    method: GET
+    user: "{{ labyrinth_jenkins_user }}"
+    password: "{{ labyrinth_jenkins_pass }}"
+    force_basic_auth: true
+    return_content: true
+  register: labyrinth_jenkins_crumb
+  failed_when: false
+
+- name: Labyrinth bootstrap | generate Jenkins API token
+  ansible.builtin.uri:
+    url: >-
+      http://10.{{ labyrinth_range_octet }}.99.3:8080/user/{{
+      labyrinth_jenkins_user }}/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken
+    method: POST
+    user: "{{ labyrinth_jenkins_user }}"
+    password: "{{ labyrinth_jenkins_pass }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      json: '{"tokenName":"labyrinth-bootstrap"}'
+    headers: >-
+      {{
+        {'Jenkins-Crumb': labyrinth_jenkins_crumb.json.crumb}
+        if (labyrinth_jenkins_crumb.json.crumb is defined)
+        else {}
+      }}
+    status_code: [200, 403]
+    return_content: true
+  register: labyrinth_jenkins_token_resp
+  no_log: true
+
+- name: Labyrinth bootstrap | parse Jenkins API token
+  ansible.builtin.set_fact:
+    labyrinth_jenkins_api_token: "{{ (labyrinth_jenkins_token_resp.json.data.tokenValue | default('')) }}"
+  when: labyrinth_jenkins_token_resp.json.data.tokenValue is defined
+  no_log: true
+
+- name: Labyrinth bootstrap | Jenkins token fallback to admin password
+  ansible.builtin.set_fact:
+    labyrinth_jenkins_api_token: "{{ labyrinth_jenkins_pass }}"
+  when: labyrinth_jenkins_api_token | default('') | length == 0
+  no_log: true

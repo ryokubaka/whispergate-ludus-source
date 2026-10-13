@@ -1,0 +1,240 @@
+network:
+  inter_vlan_default: ACCEPT
+ludus:
+  - vm_name: '{{ range_id }}-elastic'
+    hostname: '{{ range_id }}-elastic'
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 10
+    ram_gb: 16
+    cpus: 4
+    linux: true
+    roles:
+      - badsectorlabs.ludus_elastic_container
+    role_vars:
+      ludus_elastic_stack_version: 9.4.4
+  - vm_name: '{{ range_id }}-victimEDR'
+    hostname: '{{ range_id }}-victimEDR'
+    template: win11-22h2-x64-enterprise-template
+    vlan: 10
+    ip_last_octet: 11
+    ram_gb: 4
+    cpus: 2
+    windows: {}
+    roles:
+      - badsectorlabs.ludus_elastic_agent
+      - whispergate.ludus_litterbox_whiskers_agent
+      - whispergate.ludus_threat_hunting
+    role_vars:
+      ludus_elastic_agent_version: 9.4.4
+      ludus_whiskers_autostart: true
+      ludus_threat_hunting_mode: agent
+      ludus_threat_hunting_sensor_ip: 10.{{ range_second_octet }}.99.13
+  - vm_name: '{{ range_id }}-victim'
+    hostname: '{{ range_id }}-victim'
+    template: win11-22h2-x64-enterprise-template
+    vlan: 10
+    ip_last_octet: 12
+    ram_gb: 4
+    cpus: 2
+    windows: {}
+    roles:
+      - whispergate.ludus_threat_hunting
+    role_vars:
+      ludus_whiskers_autostart: true
+      ludus_threat_hunting_mode: agent
+      ludus_threat_hunting_sensor_ip: 10.{{ range_second_octet }}.99.13
+  - vm_name: '{{ range_id }}-forgejo'
+    hostname: '{{ range_id }}-forgejo'
+    template: debian-12-x64-server-template
+    vlan: 99
+    ip_last_octet: 2
+    ram_gb: 4
+    cpus: 2
+    linux: true
+    roles:
+      - whispergate.ludus_forgejo
+    role_vars:
+      ludus_forgejo_domain: 10.{{ range_second_octet }}.99.2
+      ludus_forgejo_http_port: 3000
+      ludus_forgejo_admin_user: forgejo-admin
+      ludus_forgejo_admin_password: ForgejoPW1!
+      ludus_forgejo_admin_email: admin@maas.local
+  - vm_name: '{{ range_id }}-jenkins'
+    hostname: '{{ range_id }}-jenkins'
+    template: debian-12-x64-server-template
+    vlan: 99
+    ip_last_octet: 3
+    ram_gb: 4
+    cpus: 2
+    linux: true
+    roles:
+      - whispergate.ludus_jenkins
+    role_vars:
+      ludus_jenkins_http_port: 8080
+      ludus_jenkins_admin_user: admin
+      ludus_jenkins_admin_password: JenkinsPW1!
+      ludus_jenkins_skip_setup_wizard: true
+      ludus_jenkins_plugins:
+        - git
+        - workflow-aggregator
+        - configuration-as-code
+        - docker-workflow
+        - credentials-binding
+        - generic-webhook-trigger
+        - matrix-auth
+        - pipeline-stage-view
+        - pipeline-utility-steps
+        - ssh-agent
+        - timestamper
+        - ansicolor
+      ludus_jenkins_static_agents:
+        - name: runner-lin01
+          labels: linux-c linux-go linux-rust linux-nim linux-generic
+          remote_fs: /opt/jenkins-agent
+          executors: 2
+        - name: runner-lin02
+          labels: linux-c linux-go linux-rust linux-nim linux-generic
+          remote_fs: /opt/jenkins-agent
+          executors: 2
+        - name: runner-win01
+          labels: windows-msvc windows-dotnet
+          remote_fs: C:\Jenkins
+          executors: 2
+  - vm_name: '{{ range_id }}-runner-lin01'
+    hostname: '{{ range_id }}-runner-lin01'
+    template: debian-13-x64-server-template
+    vlan: 99
+    ip_last_octet: 4
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    roles:
+      - whispergate.ludus_jenkins_agent
+      - whispergate.ludus_maas_builders
+    role_vars:
+      ludus_jenkins_url: http://10.{{ range_second_octet }}.99.3:8080
+      ludus_jenkins_agent_name: runner-lin01
+      ludus_jenkins_agent_labels: linux-c linux-go linux-rust linux-nim linux-generic
+      ludus_jenkins_admin_password: JenkinsPW1!
+      ludus_maas_builder_images:
+        - maas-builder-c
+        - maas-builder-go
+        - maas-builder-rust
+        - maas-builder-nim
+        - maas-builder-calypso
+  - vm_name: '{{ range_id }}-runner-lin02'
+    hostname: '{{ range_id }}-runner-lin02'
+    template: debian-13-x64-server-template
+    vlan: 99
+    ip_last_octet: 5
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    roles:
+      - whispergate.ludus_jenkins_agent
+      - whispergate.ludus_maas_builders
+    role_vars:
+      ludus_jenkins_url: http://10.{{ range_second_octet }}.99.3:8080
+      ludus_jenkins_agent_name: runner-lin02
+      ludus_jenkins_agent_labels: linux-c linux-go linux-rust linux-nim linux-generic
+      ludus_jenkins_admin_password: JenkinsPW1!
+      ludus_maas_builder_images:
+        - maas-builder-c
+        - maas-builder-go
+        - maas-builder-rust
+        - maas-builder-nim
+        - maas-builder-calypso
+  - vm_name: '{{ range_id }}-mythic'
+    hostname: '{{ range_id }}-mythic'
+    template: ubuntu-24.04-x64-server-template
+    vlan: 99
+    ip_last_octet: 6
+    ram_gb: 16
+    cpus: 8
+    linux: true
+    roles:
+      - whispergate.ludus_mythic_teamserver
+      - whispergate.ludus_labyrinth_bootstrap
+    role_vars:
+      ludus_mythic_agents:
+        - https://github.com/MythicAgents/forge
+        - https://github.com/Whispergate/Starburst
+        - https://github.com/Whispergate/Erebus
+        - https://github.com/Whispergate/Ariadne
+        - https://github.com/Whispergate/Sphinx
+        - https://github.com/Whispergate/Daedalus
+      ludus_mythic_c2_profiles:
+        - https://github.com/MythicC2Profiles/http
+        - https://github.com/MythicC2Profiles/smb
+      labyrinth_range_octet: "{{ range_second_octet }}"
+  - vm_name: '{{ range_id }}-runner-win01'
+    hostname: '{{ range_id }}-runner-win01'
+    template: win2022-server-x64-template
+    vlan: 99
+    ip_last_octet: 7
+    ram_gb: 8
+    cpus: 4
+    windows: {}
+    roles:
+      - whispergate.ludus_jenkins_agent_windows
+      - whispergate.ludus_vs_build_tools
+    role_vars:
+      ludus_jenkins_url: http://10.{{ range_second_octet }}.99.3:8080
+      ludus_jenkins_agent_name: runner-win01
+      ludus_jenkins_agent_labels: windows-msvc windows-dotnet
+      ludus_jenkins_admin_password: JenkinsPW1!
+  - vm_name: '{{ range_id }}-commando'
+    hostname: '{{ range_id }}-commando'
+    template: commando-vm-template
+    vlan: 99
+    ip_last_octet: 10
+    ram_gb: 8
+    cpus: 4
+    windows: {}
+    roles:
+      - badsectorlabs.ludus_commandovm
+  - vm_name: '{{ range_id }}-litterbox'
+    hostname: '{{ range_id }}-litterbox'
+    template: win2022-server-x64-template
+    vlan: 99
+    ip_last_octet: 12
+    ram_gb: 4
+    cpus: 2
+    windows: {}
+    roles:
+      - whispergate.ludus_litterbox
+    role_vars:
+      ludus_litterbox_host: 0.0.0.0
+      ludus_litterbox_port: 1337
+      ludus_litterbox_elastic_enabled: true
+      ludus_litterbox_elastic_auto_apikey: true
+      ludus_litterbox_elastic_agent_ip: 10.{{ range_second_octet }}.10.11
+      ludus_litterbox_elastic_url: 10.{{ range_second_octet }}.10.10:9200
+      ludus_litterbox_elastic_username: elastic
+      ludus_litterbox_elastic_password: elasticpassword
+  - vm_name: '{{ range_id }}-threathunting'
+    hostname: '{{ range_id }}-threathunting'
+    template: ubuntu-24.04-x64-server-template
+    vlan: 99
+    ip_last_octet: 13
+    ram_gb: 4
+    cpus: 2
+    linux: true
+    roles:
+      - whispergate.ludus_threat_hunting
+    role_vars:
+      ludus_threat_hunting_mode: sensor
+      ludus_threat_hunting_rita_database: hunt
+      ludus_threat_hunting_rita_beacon_unique_connection_threshold: 4
+      ludus_threat_hunting_mirror_enabled: true
+      ludus_threat_hunting_mirror_accept_pcap_stream: true
+      ludus_threat_hunting_rita_internal_subnets:
+        - 10.{{ range_second_octet }}.10.0/24
+router:
+  vm_name: '{{ range_id }}-router-debian12-x64'
+  hostname: '{{ range_id }}-router-debian12-x64'
+  template: debian-12-x64-server-template
+  ram_gb: 2
+  cpus: 2
+  ram_min_gb: 0.5

@@ -1,0 +1,11 @@
+---
+- name: Labyrinth bootstrap | write Daedalus container .env
+  ansible.builtin.template:
+    src: daedalus.env.j2
+    dest: "{{ labyrinth_daedalus_env_path }}"
+    mode: "0600"
+  become: true
+  notify: Restart Daedalus container
+
+- name: Labyrinth bootstrap | flush handlers before verify
+  ansible.builtin.meta: flush_handlers

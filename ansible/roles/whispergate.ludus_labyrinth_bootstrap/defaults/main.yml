@@ -1,0 +1,44 @@
+---
+labyrinth_range_octet: "{{ range_second_octet | default('') }}"
+
+labyrinth_forgejo_user: forgejo-admin
+labyrinth_forgejo_pass: ForgejoPW1!
+labyrinth_jenkins_user: admin
+labyrinth_jenkins_pass: JenkinsPW1!
+labyrinth_jenkins_webhook_token: maas-build-trigger
+
+labyrinth_mythic_admin_user: mythic_admin
+labyrinth_mythic_install_dir: /opt/Mythic
+labyrinth_mythic_graphql_url: "https://127.0.0.1:7443/graphql"
+labyrinth_mythic_api_token: ""
+labyrinth_jenkins_api_token: ""
+labyrinth_forgejo_api_token: ""
+
+labyrinth_pipeline_repo: https://github.com/Whispergate/Labyrinth.git
+labyrinth_pipeline_ref: main
+labyrinth_work_dir: /opt/labyrinth
+labyrinth_pipeline_dir: "{{ labyrinth_work_dir }}/pipeline"
+labyrinth_state_dir: "{{ labyrinth_work_dir }}/state"
+
+labyrinth_mirror_tooling: false
+labyrinth_setup_clean: false
+labyrinth_force_bootstrap: false
+
+labyrinth_daedalus_env_path: "{{ labyrinth_mythic_install_dir }}/InstalledServices/daedalus/.env"
+labyrinth_daedalus_provider: jenkins
+labyrinth_forgejo_owner: offensive-tooling
+
+labyrinth_run_verify_manual_build: false
+labyrinth_bootstrap_tag: labyrinth_bootstrap
+
+labyrinth_expected_loader_repos:
+  - loader-c-mingw
+  - loader-c-ollvm
+  - loader-go-garble
+  - loader-rust
+  - loader-csharp
+
+labyrinth_package_names:
+  - curl
+  - jq
+  - git

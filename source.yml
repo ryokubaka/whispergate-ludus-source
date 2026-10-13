@@ -1,0 +1,7 @@
+manifest_version: 1
+name: "Whispergate Ludus Source"
+description: "Whispergate Ludus Ansible roles (git submodules) and the Labyrinth MAAS blueprint with post-deploy bootstrap."
+authors:
+  - "ryokubaka"
+homepage: https://github.com/ryokubaka/whispergate-ludus-source
+license: BSD-2-Clause
