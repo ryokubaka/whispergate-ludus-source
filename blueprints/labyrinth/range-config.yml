@@ -155,7 +155,10 @@ ludus:
     linux: true
     roles:
       - whispergate.ludus_mythic_teamserver
-      - whispergate.ludus_labyrinth_bootstrap
+      - name: whispergate.ludus_labyrinth_bootstrap
+        depends_on:
+          - vm_name: '{{ range_id }}-litterbox'
+            role: whispergate.ludus_litterbox
     role_vars:
       ludus_mythic_agents:
         - https://github.com/MythicAgents/forge
