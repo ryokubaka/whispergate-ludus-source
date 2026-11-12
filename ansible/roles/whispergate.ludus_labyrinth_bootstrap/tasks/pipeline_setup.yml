@@ -6,6 +6,7 @@
     version: "{{ labyrinth_pipeline_ref }}"
     depth: 1
     single_branch: true
+    force: true
   become: true
 
 - name: Labyrinth bootstrap | expose pipeline directory
