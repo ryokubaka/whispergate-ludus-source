@@ -64,6 +64,18 @@
       }}
   no_log: true
 
+- name: Labyrinth bootstrap | remove existing Forgejo daedalus token
+  ansible.builtin.uri:
+    url: "https://10.{{ labyrinth_range_octet }}.99.2/api/v1/users/{{ labyrinth_forgejo_user }}/tokens/daedalus"
+    method: DELETE
+    user: "{{ labyrinth_forgejo_user }}"
+    password: "{{ labyrinth_forgejo_pass }}"
+    force_basic_auth: true
+    validate_certs: false
+    status_code: [204, 404]
+  when: labyrinth_forgejo_api_token | default('') | length == 0
+  no_log: true
+
 - name: Labyrinth bootstrap | create Forgejo API token when setup did not print one
   ansible.builtin.uri:
     url: "https://10.{{ labyrinth_range_octet }}.99.2/api/v1/users/{{ labyrinth_forgejo_user }}/tokens"
@@ -76,11 +88,20 @@
       name: daedalus
       scopes: [all]
     validate_certs: false
-    status_code: [201, 409]
+    status_code: [201, 400]
     return_content: true
   register: labyrinth_forgejo_token_resp
   when: labyrinth_forgejo_api_token | default('') | length == 0
   no_log: true
+
+- name: Labyrinth bootstrap | explain Forgejo token failure
+  ansible.builtin.fail:
+    msg: >-
+      Forgejo rejected the daedalus token:
+      {{ labyrinth_forgejo_token_resp.json.message | default(labyrinth_forgejo_token_resp.status) }}
+  when:
+    - labyrinth_forgejo_api_token | default('') | length == 0
+    - labyrinth_forgejo_token_resp.status | default(201) != 201
 
 - name: Labyrinth bootstrap | store Forgejo token from API
   ansible.builtin.set_fact:
