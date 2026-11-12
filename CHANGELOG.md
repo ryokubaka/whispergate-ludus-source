@@ -21,6 +21,8 @@ bump is not a patch. Do not invent a version heading on a feature branch.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-12
+
 - [Add] GitHub Actions CI. Release-script unit tests, `bash -n` on `scripts/*.sh`, and a changelog-driven GitHub Release after merge to `dev`.
 
 ## [1.0.0] - 2026-11-12
