@@ -1,0 +1,21 @@
+# Workflows
+
+| Workflow | When | What |
+|---|---|---|
+| [`ci.yml`](./ci.yml) | PRs and pushes to `dev` | Release-script unit tests + `bash -n` on `scripts/*.sh`. On `dev` (and not a `chore(release):` commit), tag and publish from `CHANGELOG.md`. |
+
+## Release job
+
+Same shape as [ludus-source-meow](https://github.com/ryokubaka/ludus-source-meow): notes live under `[Unreleased]`. After tests pass on `dev`, `node scripts/release.mjs ci`:
+
+- tags the newest `## [X.Y.Z]` heading if that tag is missing, then
+- promotes Unreleased to the next patch (or minor/major when Unreleased includes `<!-- release: minor -->` / `<!-- release: major -->`) in the **same job**, then tags and creates the GitHub Release.
+
+`chore(release):` commits skip the workflow so the bot push does not loop.
+
+Local:
+
+```bash
+node --test scripts/release.test.mjs
+node scripts/release.mjs plan
+```
