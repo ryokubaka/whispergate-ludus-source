@@ -8,6 +8,7 @@ import re
 import ssl
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 
@@ -55,6 +56,19 @@ def graphql_urls(url: str) -> list[str]:
     return [base + "/", base]
 
 
+def auth_urls(graphql_url: str) -> list[str]:
+    parsed = urllib.parse.urlparse(graphql_url)
+    root = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
+    return [root + "/auth", root + "/auth/"]
+
+
+def access_token_from(body: dict) -> str:
+    if body.get("access_token"):
+        return str(body["access_token"])
+    login_body = (body.get("data") or {}).get("login") or {}
+    return str(login_body.get("access_token") or "")
+
+
 def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -80,38 +94,31 @@ def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
         raise RuntimeError(f"non-JSON response from {url}: {body[:300]}") from exc
 
 
-def login(urls: list[str], username: str, password: str) -> tuple[str, str]:
-    query = """
-    mutation Login($username: String!, $password: String!) {
-      login(username: $username, password: $password) {
-        status
-        error
-        access_token
-      }
-    }
+def login(graphql_url: str, username: str, password: str) -> str:
+    """Log in through Mythic's /auth endpoint.
+
+    /graphql is behind Hasura's auth hook and rejects calls that do not already
+    have a bearer token, including the login mutation.
     """
+    payload = {"username": username, "password": password}
     errors: list[str] = []
-    for url in urls:
+    for url in auth_urls(graphql_url):
         try:
-            body = post_json(
-                url,
-                {
-                    "query": query,
-                    "variables": {"username": username, "password": password},
-                },
-            )
+            body = post_json(url, payload)
         except RuntimeError as exc:
             errors.append(str(exc))
             continue
         if body.get("errors"):
             errors.append(f"{url}: {json.dumps(body['errors'])[:400]}")
             continue
-        login_body = (body.get("data") or {}).get("login") or {}
-        token = login_body.get("access_token") or ""
-        if login_body.get("status") == "success" and token:
-            return url, token
-        message = login_body.get("error") or "login status was not success"
-        errors.append(f"{url}: {message}")
+        if body.get("error"):
+            errors.append(f"{url}: {body.get('error')}")
+            continue
+        token = access_token_from(body)
+        status = str(body.get("status") or "")
+        if token and status.lower() not in {"error", "failed"}:
+            return token
+        errors.append(f"{url}: login response had no access_token")
     raise RuntimeError("Mythic login failed. " + " | ".join(errors))
 
 
@@ -131,6 +138,16 @@ def create_token(url: str, access: str, name: str) -> str:
         """
         mutation CreateToken($name: String!) {
           createAPIToken(name: $name) {
+            status
+            error
+            token_value
+          }
+        }
+        """,
+        # Older scripting clients created a user token with no name argument.
+        """
+        mutation CreateToken {
+          createAPIToken(token_type: "User") {
             status
             error
             token_value
@@ -194,9 +211,15 @@ def main() -> int:
         )
         return 1
     try:
-        url, access = login(graphql_urls(graphql_url), username, password)
-        print(create_token(url, access, token_name))
-        return 0
+        access = login(graphql_url, username, password)
+        token_errors: list[str] = []
+        for url in graphql_urls(graphql_url):
+            try:
+                print(create_token(url, access, token_name))
+                return 0
+            except RuntimeError as exc:
+                token_errors.append(f"{url}: {exc}")
+        raise RuntimeError(" | ".join(token_errors))
     except RuntimeError as exc:
         write_error(str(exc))
         return 1
