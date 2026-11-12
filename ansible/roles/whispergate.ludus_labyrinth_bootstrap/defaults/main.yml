@@ -8,7 +8,7 @@ labyrinth_jenkins_pass: JenkinsPW1!
 labyrinth_jenkins_webhook_token: maas-build-trigger
 
 labyrinth_mythic_admin_user: mythic_admin
-labyrinth_mythic_install_dir: /opt/Mythic
+labyrinth_mythic_install_dir: /opt/mythic
 labyrinth_mythic_graphql_url: "https://127.0.0.1:7443/graphql"
 labyrinth_mythic_api_token: ""
 labyrinth_jenkins_api_token: ""
