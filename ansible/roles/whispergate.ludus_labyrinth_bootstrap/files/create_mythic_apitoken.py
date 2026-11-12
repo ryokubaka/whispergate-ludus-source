@@ -1,13 +1,58 @@
 #!/usr/bin/env python3
-"""Create a Mythic operator API token via GraphQL login (Mythic 3.x style)."""
+"""Create a Mythic operator API token via GraphQL login."""
 from __future__ import annotations
 
 import json
 import os
+import re
 import ssl
 import sys
 import urllib.error
 import urllib.request
+
+
+def parse_cli_value(raw: str, key: str) -> str:
+    """Pull a secret out of `mythic-cli config get` output.
+
+    Current mythic-cli prints `MYTHIC_ADMIN_PASSWORD = <secret>`. Older builds
+    print `MYTHIC_ADMIN_PASSWORD <secret>` or only the secret.
+    """
+    text = raw.replace("\r", "").strip()
+    if not text:
+        return ""
+    keyed = re.search(rf"(?im)^{re.escape(key)}\s*=\s*(\S+)\s*$", text)
+    if keyed:
+        return keyed.group(1).strip().strip('"').strip("'")
+    keyed = re.search(rf"(?im)^{re.escape(key)}\s+(\S+)\s*$", text)
+    if keyed and keyed.group(1) != "=":
+        return keyed.group(1).strip().strip('"').strip("'")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) == 1 and "=" not in lines[0] and " " not in lines[0]:
+        return lines[0].strip().strip('"').strip("'")
+    return ""
+
+
+def read_dotenv_value(path: str, key: str) -> str:
+    if not path or not os.path.isfile(path):
+        return ""
+    wanted = key.lower()
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                name, value = line.split("=", 1)
+                if name.strip().lower() == wanted:
+                    return value.strip().strip('"').strip("'")
+    except OSError as exc:
+        print(f"warning: could not read {path}: {exc}", file=sys.stderr)
+    return ""
+
+
+def graphql_urls(url: str) -> list[str]:
+    base = url.rstrip("/")
+    return [base + "/", base]
 
 
 def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
@@ -21,66 +66,140 @@ def post_json(url: str, payload: dict, headers: dict | None = None) -> dict:
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"HTTP {exc.code} from {url}: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"request to {url} failed: {exc.reason}") from exc
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"non-JSON response from {url}: {body[:300]}") from exc
 
 
-def main() -> int:
-    graphql_url = os.environ.get("MYTHIC_GRAPHQL_URL", "https://127.0.0.1:7443/graphql")
-    username = os.environ["MYTHIC_ADMIN_USER"]
-    password = os.environ["MYTHIC_ADMIN_PASSWORD"]
-    token_name = os.environ.get("MYTHIC_TOKEN_NAME", "labyrinth-bootstrap")
-
-    login_query = """
+def login(urls: list[str], username: str, password: str) -> tuple[str, str]:
+    query = """
     mutation Login($username: String!, $password: String!) {
       login(username: $username, password: $password) {
         status
         error
         access_token
-        refresh_token
       }
     }
     """
-    login_body = post_json(
-        graphql_url,
-        {
-            "query": login_query,
-            "variables": {"username": username, "password": password},
-        },
-    )
-    login = (login_body.get("data") or {}).get("login") or {}
-    if login.get("status") != "success" or not login.get("access_token"):
-        print(json.dumps({"error": "login failed", "body": login_body}), file=sys.stderr)
+    errors: list[str] = []
+    for url in urls:
+        try:
+            body = post_json(
+                url,
+                {
+                    "query": query,
+                    "variables": {"username": username, "password": password},
+                },
+            )
+        except RuntimeError as exc:
+            errors.append(str(exc))
+            continue
+        if body.get("errors"):
+            errors.append(f"{url}: {json.dumps(body['errors'])[:400]}")
+            continue
+        login_body = (body.get("data") or {}).get("login") or {}
+        token = login_body.get("access_token") or ""
+        if login_body.get("status") == "success" and token:
+            return url, token
+        message = login_body.get("error") or "login status was not success"
+        errors.append(f"{url}: {message}")
+    raise RuntimeError("Mythic login failed. " + " | ".join(errors))
+
+
+def create_token(url: str, access: str, name: str) -> str:
+    mutations = [
+        # Mythic 4 requires scopes. "*" is the admin global scope.
+        """
+        mutation CreateToken($name: String!) {
+          createAPIToken(name: $name, scopes: ["*"]) {
+            status
+            error
+            token_value
+          }
+        }
+        """,
+        # Mythic 3.x accepted a name-only token.
+        """
+        mutation CreateToken($name: String!) {
+          createAPIToken(name: $name) {
+            status
+            error
+            token_value
+          }
+        }
+        """,
+    ]
+    headers = {"Authorization": f"Bearer {access}"}
+    errors: list[str] = []
+    for query in mutations:
+        body = post_json(
+            url,
+            {"query": query, "variables": {"name": name}},
+            headers=headers,
+        )
+        if body.get("errors"):
+            errors.append(json.dumps(body["errors"])[:400])
+            continue
+        block = (body.get("data") or {}).get("createAPIToken") or {}
+        value = block.get("token_value") or ""
+        if block.get("status") == "success" and value:
+            return value
+        errors.append(block.get("error") or "createAPIToken did not return a token")
+    raise RuntimeError("Mythic API token creation failed. " + " | ".join(errors))
+
+
+def write_error(message: str) -> None:
+    state_dir = os.environ.get("MYTHIC_TOKEN_ERROR_DIR", "")
+    text = message.strip() + "\n"
+    print(text, file=sys.stderr, end="")
+    if not state_dir:
+        return
+    try:
+        os.makedirs(state_dir, exist_ok=True)
+        path = os.path.join(state_dir, "mythic-token.err")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+    except OSError as exc:
+        print(f"warning: could not write mythic-token.err: {exc}", file=sys.stderr)
+
+
+def resolve_password() -> str:
+    dotenv = read_dotenv_value(os.environ.get("MYTHIC_DOTENV", ""), "MYTHIC_ADMIN_PASSWORD")
+    if dotenv:
+        return dotenv
+    parsed = parse_cli_value(os.environ.get("MYTHIC_ADMIN_PASSWORD", ""), "MYTHIC_ADMIN_PASSWORD")
+    if parsed:
+        return parsed
+    return ""
+
+
+def main() -> int:
+    graphql_url = os.environ.get("MYTHIC_GRAPHQL_URL", "https://127.0.0.1:7443/graphql/")
+    username = os.environ.get("MYTHIC_ADMIN_USER", "mythic_admin")
+    token_name = os.environ.get("MYTHIC_TOKEN_NAME", "labyrinth-bootstrap")
+    password = resolve_password()
+    if not password:
+        write_error(
+            "Mythic admin password was empty. mythic-cli output could not be parsed "
+            "and .env did not contain MYTHIC_ADMIN_PASSWORD."
+        )
         return 1
-    access = login["access_token"]
-
-    create_query = """
-    mutation CreateToken($name: String!) {
-      createAPIToken(name: $name) {
-        status
-        error
-        token_value
-      }
-    }
-    """
-    create_body = post_json(
-        graphql_url,
-        {"query": create_query, "variables": {"name": token_name}},
-        headers={"Authorization": f"Bearer {access}"},
-    )
-    token_block = (create_body.get("data") or {}).get("createAPIToken") or {}
-    token_value = token_block.get("token_value")
-    if token_block.get("status") == "success" and token_value:
-        print(token_value)
+    try:
+        url, access = login(graphql_urls(graphql_url), username, password)
+        print(create_token(url, access, token_name))
         return 0
-
-    # Mythic 3.x fallback: apitoken header from login access_token
-    if access:
-        print(access)
-        return 0
-
-    print(json.dumps({"error": "token creation failed", "body": create_body}), file=sys.stderr)
-    return 1
+    except RuntimeError as exc:
+        write_error(str(exc))
+        return 1
 
 
 if __name__ == "__main__":

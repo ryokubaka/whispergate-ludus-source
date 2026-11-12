@@ -20,19 +20,38 @@
   no_log: true
 
 - name: Labyrinth bootstrap | create Mythic API token via GraphQL
-  ansible.builtin.command:
-    argv:
-      - python3
-      - "{{ labyrinth_state_dir }}/create_mythic_apitoken.py"
-  environment:
-    MYTHIC_GRAPHQL_URL: "{{ labyrinth_mythic_graphql_url }}"
-    MYTHIC_ADMIN_USER: "{{ labyrinth_mythic_admin_user }}"
-    MYTHIC_ADMIN_PASSWORD: "{{ labyrinth_mythic_admin_password_cmd.stdout | trim }}"
-    MYTHIC_TOKEN_NAME: labyrinth-bootstrap
-  register: labyrinth_mythic_token_cmd
-  changed_when: true
   when: labyrinth_mythic_api_token | length == 0
-  no_log: true
+  block:
+    - name: Labyrinth bootstrap | request Mythic API token
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ labyrinth_state_dir }}/create_mythic_apitoken.py"
+      environment:
+        MYTHIC_GRAPHQL_URL: "{{ labyrinth_mythic_graphql_url }}"
+        MYTHIC_ADMIN_USER: "{{ labyrinth_mythic_admin_user }}"
+        MYTHIC_ADMIN_PASSWORD: "{{ labyrinth_mythic_admin_password_cmd.stdout | trim }}"
+        MYTHIC_DOTENV: "{{ labyrinth_mythic_install_dir }}/.env"
+        MYTHIC_TOKEN_ERROR_DIR: "{{ labyrinth_state_dir }}"
+        MYTHIC_TOKEN_NAME: labyrinth-bootstrap
+      register: labyrinth_mythic_token_cmd
+      changed_when: true
+      no_log: true
+  rescue:
+    - name: Labyrinth bootstrap | read Mythic token error
+      ansible.builtin.slurp:
+        src: "{{ labyrinth_state_dir }}/mythic-token.err"
+      register: labyrinth_mythic_token_err
+      failed_when: false
+
+    - name: Labyrinth bootstrap | fail Mythic token creation
+      ansible.builtin.fail:
+        msg: >-
+          {{
+            (labyrinth_mythic_token_err.content | b64decode)
+            if (labyrinth_mythic_token_err.content | default('') | length > 0)
+            else 'Mythic API token creation failed and no mythic-token.err was written.'
+          }}
 
 - name: Labyrinth bootstrap | store Mythic API token fact
   ansible.builtin.set_fact:
