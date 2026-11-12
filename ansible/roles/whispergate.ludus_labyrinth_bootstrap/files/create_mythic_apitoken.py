@@ -123,55 +123,30 @@ def login(graphql_url: str, username: str, password: str) -> str:
 
 
 def create_token(url: str, access: str, name: str) -> str:
-    mutations = [
-        # Mythic 4 requires scopes. "*" is the admin global scope.
-        """
-        mutation CreateToken($name: String!) {
-          createAPIToken(name: $name, scopes: ["*"]) {
-            status
-            error
-            token_value
-          }
-        }
-        """,
-        # Mythic 3.x accepted a name-only token.
-        """
-        mutation CreateToken($name: String!) {
-          createAPIToken(name: $name) {
-            status
-            error
-            token_value
-          }
-        }
-        """,
-        # Older scripting clients created a user token with no name argument.
-        """
-        mutation CreateToken {
-          createAPIToken(token_type: "User") {
-            status
-            error
-            token_value
-          }
-        }
-        """,
-    ]
-    headers = {"Authorization": f"Bearer {access}"}
-    errors: list[str] = []
-    for query in mutations:
-        body = post_json(
-            url,
-            {"query": query, "variables": {"name": name}},
-            headers=headers,
-        )
-        if body.get("errors"):
-            errors.append(json.dumps(body["errors"])[:400])
-            continue
-        block = (body.get("data") or {}).get("createAPIToken") or {}
-        value = block.get("token_value") or ""
-        if block.get("status") == "success" and value:
-            return value
-        errors.append(block.get("error") or "createAPIToken did not return a token")
-    raise RuntimeError("Mythic API token creation failed. " + " | ".join(errors))
+    # This Mythic build requires token_type and rejects name and scopes.
+    # Do not send a variables object: Hasura rejects variables the query does not declare.
+    del name
+    query = """
+    mutation CreateToken {
+      createAPIToken(token_type: "User") {
+        status
+        error
+        token_value
+      }
+    }
+    """
+    body = post_json(
+        url,
+        {"query": query},
+        headers={"Authorization": f"Bearer {access}"},
+    )
+    if body.get("errors"):
+        raise RuntimeError(json.dumps(body["errors"])[:400])
+    block = (body.get("data") or {}).get("createAPIToken") or {}
+    value = block.get("token_value") or ""
+    if block.get("status") == "success" and value:
+        return value
+    raise RuntimeError(block.get("error") or "createAPIToken did not return a token")
 
 
 def write_error(message: str) -> None:
