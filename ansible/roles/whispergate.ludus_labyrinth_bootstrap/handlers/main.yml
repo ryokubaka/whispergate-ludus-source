@@ -1,0 +1,9 @@
+---
+- name: Restart Daedalus container
+  ansible.builtin.command:
+    argv:
+      - ./mythic-cli
+      - restart
+      - daedalus
+    chdir: "{{ labyrinth_mythic_install_dir }}"
+  become: true

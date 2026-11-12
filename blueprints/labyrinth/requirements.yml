@@ -1,0 +1,9 @@
+roles:
+  - name: geerlingguy.docker
+    version: "8.0.0"
+  - name: badsectorlabs.ludus_elastic_container
+    src: https://github.com/badsectorlabs/ludus_elastic_container
+  - name: badsectorlabs.ludus_elastic_agent
+    src: https://github.com/badsectorlabs/ludus_elastic_agent
+  - name: badsectorlabs.ludus_commandovm
+    src: https://github.com/badsectorlabs/ludus_commandovm

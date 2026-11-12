@@ -1,0 +1,66 @@
+[submodule "ansible/roles/whispergate.ludus_jenkins"]
+	path = ansible/roles/whispergate.ludus_jenkins
+	url = https://github.com/Whispergate/ludus_jenkins_role.git
+[submodule "ansible/roles/whispergate.ludus_thehive"]
+	path = ansible/roles/whispergate.ludus_thehive
+	url = https://github.com/Whispergate/ludus_thehive.git
+[submodule "ansible/roles/whispergate.ludus_nginx_redirector"]
+	path = ansible/roles/whispergate.ludus_nginx_redirector
+	url = https://github.com/Whispergate/ludus_nginx_redirector.git
+[submodule "ansible/roles/whispergate.ludus_litterbox_whiskers_agent"]
+	path = ansible/roles/whispergate.ludus_litterbox_whiskers_agent
+	url = https://github.com/Whispergate/ludus_litterbox_whiskers_agent.git
+[submodule "ansible/roles/whispergate.ludus_threat_hunting"]
+	path = ansible/roles/whispergate.ludus_threat_hunting
+	url = https://github.com/Whispergate/ludus_threat_hunting.git
+[submodule "ansible/roles/whispergate.ludus_pterodactyl"]
+	path = ansible/roles/whispergate.ludus_pterodactyl
+	url = https://github.com/Whispergate/ludus_pterodactyl_role.git
+[submodule "ansible/roles/whispergate.ludus_pwndrop_role"]
+	path = ansible/roles/whispergate.ludus_pwndrop_role
+	url = https://github.com/Whispergate/ludus_pwndrop_role.git
+[submodule "ansible/roles/whispergate.ludus_jenkins_agent_windows"]
+	path = ansible/roles/whispergate.ludus_jenkins_agent_windows
+	url = https://github.com/Whispergate/ludus_jenkins_agent_windows.git
+[submodule "ansible/roles/whispergate.ludus_jenkins_agent"]
+	path = ansible/roles/whispergate.ludus_jenkins_agent
+	url = https://github.com/Whispergate/ludus_jenkins_agent.git
+[submodule "ansible/roles/whispergate.ludus_evilginx_role"]
+	path = ansible/roles/whispergate.ludus_evilginx_role
+	url = https://github.com/Whispergate/ludus_evilginx_role.git
+[submodule "ansible/roles/whispergate.ludus_litterbox"]
+	path = ansible/roles/whispergate.ludus_litterbox
+	url = https://github.com/Whispergate/ludus_litterbox_role.git
+[submodule "ansible/roles/whispergate.ludus_forgejo"]
+	path = ansible/roles/whispergate.ludus_forgejo
+	url = https://github.com/Whispergate/ludus_forgejo.git
+[submodule "ansible/roles/whispergate.ludus_wazuh_agent"]
+	path = ansible/roles/whispergate.ludus_wazuh_agent
+	url = https://github.com/Whispergate/ludus_wazuh_agent.git
+[submodule "ansible/roles/whispergate.ludus_ad_misconfigs"]
+	path = ansible/roles/whispergate.ludus_ad_misconfigs
+	url = https://github.com/Whispergate/ludus_ad_misconfigs.git
+[submodule "ansible/roles/whispergate.ludus_mailhog"]
+	path = ansible/roles/whispergate.ludus_mailhog
+	url = https://github.com/Whispergate/ludus_mailhog_role.git
+[submodule "ansible/roles/whispergate.ludus_dfir_iris"]
+	path = ansible/roles/whispergate.ludus_dfir_iris
+	url = https://github.com/Whispergate/ludus_dfir_iris.git
+[submodule "ansible/roles/whispergate.ludus_gitlab_ce"]
+	path = ansible/roles/whispergate.ludus_gitlab_ce
+	url = https://github.com/Whispergate/ludus_gitlab_ce.git
+[submodule "ansible/roles/whispergate.ludus_misp_role"]
+	path = ansible/roles/whispergate.ludus_misp_role
+	url = https://github.com/Whispergate/ludus_misp.git
+[submodule "ansible/roles/whispergate.ludus_maas_builders"]
+	path = ansible/roles/whispergate.ludus_maas_builders
+	url = https://github.com/Whispergate/ludus_maas_builders.git
+[submodule "ansible/roles/whispergate.ludus_vs_build_tools"]
+	path = ansible/roles/whispergate.ludus_vs_build_tools
+	url = https://github.com/Whispergate/ludus_vs_build_tools.git
+[submodule "ansible/roles/whispergate.ludus_mythic_teamserver"]
+	path = ansible/roles/whispergate.ludus_mythic_teamserver
+	url = https://github.com/Whispergate/ludus_mythic_teamserver.git
+[submodule "ansible/roles/whispergate.ludus_sheepl_role"]
+	path = ansible/roles/whispergate.ludus_sheepl_role
+	url = https://github.com/Whispergate/ludus_sheepl_role.git

@@ -1,0 +1,13 @@
+This Ludus source aggregates upstream Whispergate Ansible roles as git submodules.
+Each submodule retains its own copyright and license in the upstream repository.
+
+First-party files in this repository (source.yml, blueprint wrappers,
+whispergate.ludus_labyrinth_bootstrap, scripts, README) are licensed under
+BSD-2-Clause; see LICENSE.
+
+Upstream role licenses are summarized in ansible/roles/README.md. This NOTICE
+does not replace the license files shipped inside each submodule.
+
+Whispergate: https://github.com/Whispergate
+Labyrinth blueprint range config: https://github.com/Whispergate/Labyrinth (BSD-2-Clause)
+Bad Sector Labs roles (Elastic, CommandoVM): https://github.com/badsectorlabs/ludus-source-bsl
