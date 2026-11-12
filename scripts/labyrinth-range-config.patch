@@ -1,14 +1,17 @@
 --- a/range-config.yml
 +++ b/range-config.yml
-@@ -155,6 +155,7 @@
+@@ -155,6 +155,10 @@
      linux: true
      roles:
        - whispergate.ludus_mythic_teamserver
-+      - whispergate.ludus_labyrinth_bootstrap
++      - name: whispergate.ludus_labyrinth_bootstrap
++        depends_on:
++          - vm_name: '{{ range_id }}-litterbox'
++            role: whispergate.ludus_litterbox
      role_vars:
        ludus_mythic_agents:
          - https://github.com/MythicAgents/forge
-@@ -167,6 +168,7 @@
+@@ -167,6 +171,7 @@
        ludus_mythic_c2_profiles:
          - https://github.com/MythicC2Profiles/http
          - https://github.com/MythicC2Profiles/smb
@@ -16,7 +19,7 @@
    - vm_name: '{{ range_id }}-runner-win01'
      hostname: '{{ range_id }}-runner-win01'
      template: win2022-server-x64-template
-@@ -191,7 +193,8 @@
+@@ -191,7 +196,8 @@
      ram_gb: 8
      cpus: 4
      windows: {}
